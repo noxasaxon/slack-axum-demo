@@ -1,3 +1,21 @@
+//! Slack Verification Service Middleware for Tower/Axum webserver ecosystem
+//!
+//! You can add this as a layer below your webserver's Slack routes
+//! ```rust
+//! let slack_api_router = Router::new()
+//! .route("/events", post(handle_slack_events_api))
+//! .route("/interaction", post(handle_slack_interaction_api))
+//! .route("/commands", post(handle_slack_commands_api))
+//! .layer(ServiceBuilder::new().layer_fn(|inner| {
+//!     SlackRequestVerifier {
+//!         inner,
+//!         verifier: SlackEventSignatureVerifier::new(
+//!             &env::var("SLACK_SIGNING_SECRET")
+//!                 .expect("Provide signing secret env var SLACK_SIGNING_SECRET"),
+//!         ),
+//!     }
+//! }));
+//! ```
 use axum::{
     body::{Body, BoxBody},
     http::{Request, Response, StatusCode},
@@ -7,6 +25,22 @@ use slack_morphism::signature_verifier::SlackEventSignatureVerifier;
 use std::{convert::Infallible, future::Future, pin::Pin};
 use tower::Service;
 
+/// This can be used in an Axum layer like so:
+/// ```rust
+/// let slack_api_router = Router::new()
+/// .route("/events", post(handle_slack_events_api))
+/// .route("/interaction", post(handle_slack_interaction_api))
+/// .route("/commands", post(handle_slack_commands_api))
+/// .layer(ServiceBuilder::new().layer_fn(|inner| {
+///     SlackRequestVerifier {
+///         inner,
+///         verifier: SlackEventSignatureVerifier::new(
+///             &env::var("SLACK_SIGNING_SECRET")
+///                 .expect("Provide signing secret env var SLACK_SIGNING_SECRET"),
+///         ),
+///     }
+/// });
+/// ```
 #[derive(Clone)]
 pub struct SlackRequestVerifier<S> {
     pub inner: S,
